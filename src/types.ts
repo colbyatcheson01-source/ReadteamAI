@@ -97,3 +97,13 @@ export interface PhoneDevice {
   networksFound: number;
   lastSync: string;
 }
+
+export interface Tool {
+  id: string;
+  name: string;
+  category: 'exploitation' | 'enumeration' | 'credential' | 'network' | 'persistence';
+  description: string;
+  available: boolean;
+  icon: string;
+  platforms: string[];
+}

@@ -239,7 +239,7 @@ export default function PayloadDelivery() {
 
           {status === 'success' && (
             <div className="border-t border-cyan-900/30 p-3 flex items-center gap-2">
-              <span className="text-yellow-300 text-xs font-mono flex-shrink-0">meterpreter ></span>
+              <span className="text-yellow-300 text-xs font-mono flex-shrink-0">meterpreter &gt;</span>
               <input
                 type="text"
                 value={cmd}

@@ -1,4 +1,4 @@
-import type { WifiNetwork, Vulnerability, Exploit, Payload, Target, ScanResult, Report, PhoneDevice } from '../types';
+import type { WifiNetwork, Vulnerability, Exploit, Payload, Target, ScanResult, Report, PhoneDevice, Tool } from '../types';
 
 export const mockNetworks: WifiNetwork[] = [
   { id: '1', ssid: 'CorpNet-HQ', bssid: 'AA:BB:CC:DD:EE:01', channel: 6, signal: -45, security: 'WPA2-Enterprise', encryption: 'CCMP', vendor: 'Cisco', firstSeen: '2026-03-09T08:00:00Z', lastSeen: '2026-03-09T11:40:00Z', lat: 37.7749, lng: -122.4194, clients: 47, frequency: '2.4GHz' },
@@ -104,3 +104,231 @@ export const mockPhoneDevice: PhoneDevice = {
   networksFound: 0,
   lastSync: '2026-03-09T10:55:00Z',
 };
+
+export const mockTools: Tool[] = [
+  // Exploitation Tools
+  {
+    id: 'metasploit',
+    name: 'Metasploit',
+    category: 'exploitation',
+    description: 'Advanced exploitation framework with payloads, encoders, and post-exploitation modules',
+    available: true,
+    icon: 'target',
+    platforms: ['Linux', 'Windows', 'macOS', 'Android']
+  },
+  {
+    id: 'sqlmap',
+    name: 'SQLMap',
+    category: 'exploitation',
+    description: 'Automatic SQL injection and database takeover tool',
+    available: true,
+    icon: 'database',
+    platforms: ['Linux', 'Windows', 'macOS']
+  },
+  {
+    id: 'cobalt-strike',
+    name: 'Cobalt Strike',
+    category: 'exploitation',
+    description: 'Advanced red team operations and post-exploitation framework',
+    available: false,
+    icon: 'shield',
+    platforms: ['Windows', 'Linux']
+  },
+  {
+    id: 'exploit-db',
+    name: 'Exploit-DB',
+    category: 'exploitation',
+    description: 'Repository of public exploits and shellcode',
+    available: true,
+    icon: 'search',
+    platforms: ['All']
+  },
+  
+  // Enumeration Tools
+  {
+    id: 'nmap',
+    name: 'Nmap',
+    category: 'enumeration',
+    description: 'Network scanner for discovery and security auditing',
+    available: true,
+    icon: 'globe',
+    platforms: ['Linux', 'Windows', 'macOS', 'Android']
+  },
+  {
+    id: 'bloodhound',
+    name: 'BloodHound',
+    category: 'enumeration',
+    description: 'Active Directory relationship visualization and attack path analysis',
+    available: true,
+    icon: 'share-2',
+    platforms: ['Windows', 'Linux', 'macOS']
+  },
+  {
+    id: 'crackmapexec',
+    name: 'CrackMapExec',
+    category: 'enumeration',
+    description: 'Swiss army knife for Active Directory enumeration and lateral movement',
+    available: true,
+    icon: 'grid',
+    platforms: ['Linux', 'macOS']
+  },
+  {
+    id: 'responder',
+    name: 'Responder',
+    category: 'enumeration',
+    description: 'LLMNR/NBT-NS/mDNS poisoner and authentication hijacker',
+    available: true,
+    icon: 'wifi',
+    platforms: ['Linux', 'macOS']
+  },
+  {
+    id: 'enum4linux',
+    name: 'enum4linux',
+    category: 'enumeration',
+    description: 'Tool for enumerating Windows and Samba systems',
+    available: true,
+    icon: 'server',
+    platforms: ['Linux', 'macOS']
+  },
+  {
+    id: 'ldapsearch',
+    name: 'LDAPsearch',
+    category: 'enumeration',
+    description: 'LDAP query tool for Active Directory enumeration',
+    available: true,
+    icon: 'search',
+    platforms: ['Linux', 'Windows', 'macOS']
+  },
+  
+  // Credential Tools
+  {
+    id: 'hydra',
+    name: 'Hydra',
+    category: 'credential',
+    description: 'Parallelized login cracker supporting many protocols',
+    available: true,
+    icon: 'key',
+    platforms: ['Linux', 'macOS', 'Windows']
+  },
+  {
+    id: 'john',
+    name: 'John the Ripper',
+    category: 'credential',
+    description: 'Fast password cracker, currently available for many flavors of Unix/Windows',
+    available: true,
+    icon: 'lock',
+    platforms: ['Linux', 'Windows', 'macOS']
+  },
+  {
+    id: 'hashcat',
+    name: 'Hashcat',
+    category: 'credential',
+    description: 'Worlds fastest and most advanced password recovery utility',
+    available: true,
+    icon: 'hash',
+    platforms: ['Linux', 'Windows', 'macOS']
+  },
+  {
+    id: 'mimikatz',
+    name: 'Mimikatz',
+    category: 'credential',
+    description: 'Tool to extract plaintext passwords, hashes, and kerberos tickets from memory',
+    available: true,
+    icon: 'user',
+    platforms: ['Windows']
+  },
+  {
+    id: 'impacket',
+    name: 'Impacket',
+    category: 'credential',
+    description: 'Python library for working with network protocols',
+    available: true,
+    icon: 'code',
+    platforms: ['Linux', 'Windows', 'macOS']
+  },
+  {
+    id: 'kerbrute',
+    name: 'Kerbrute',
+    category: 'credential',
+    description: 'Kerberos brute-force and enumeration tool',
+    available: true,
+    icon: 'user-check',
+    platforms: ['Linux', 'Windows', 'macOS']
+  },
+  
+  // Network Tools
+  {
+    id: 'netcat',
+    name: 'Netcat',
+    category: 'network',
+    description: 'Swiss army knife for reading/writing network connections',
+    available: true,
+    icon: 'network',
+    platforms: ['Linux', 'Windows', 'macOS']
+  },
+  {
+    id: 'wireshark',
+    name: 'Wireshark',
+    category: 'network',
+    description: 'Network protocol analyzer for deep packet inspection',
+    available: true,
+    icon: 'activity',
+    platforms: ['Linux', 'Windows', 'macOS']
+  },
+  {
+    id: 'tcpdump',
+    name: 'Tcpdump',
+    category: 'network',
+    description: 'Command-line packet analyzer',
+    available: true,
+    icon: 'terminal',
+    platforms: ['Linux', 'macOS']
+  },
+  {
+    id: 'bettercap',
+    name: 'BetterCAP',
+    category: 'network',
+    description: 'Modular, portable and easily extensible MITM framework',
+    available: true,
+    icon: 'grid',
+    platforms: ['Linux', 'macOS', 'Windows']
+  },
+  {
+    id: 'ettercap',
+    name: 'Ettercap',
+    category: 'network',
+    description: 'Comprehensive MITM tool for LAN',
+    available: true,
+    icon: 'shield',
+    platforms: ['Linux', 'macOS']
+  },
+  
+  // Persistence Tools
+  {
+    id: 'empire',
+    name: 'Empire',
+    category: 'persistence',
+    description: 'Post-exploitation framework with PowerShell and Python agents',
+    available: true,
+    icon: 'server',
+    platforms: ['Linux', 'macOS', 'Windows']
+  },
+  {
+    id: 'covenant',
+    name: 'Covenant',
+    category: 'persistence',
+    description: '.NET command and control framework',
+    available: true,
+    icon: 'link',
+    platforms: ['Linux', 'Windows', 'macOS']
+  },
+  {
+    id: 'pupy',
+    name: 'Pupy',
+    category: 'persistence',
+    description: 'Cross-platform remote administration and post-exploitation tool',
+    available: true,
+    icon: 'cpu',
+    platforms: ['Linux', 'Windows', 'macOS', 'Android']
+  }
+];

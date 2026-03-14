@@ -168,8 +168,8 @@ export default function Reports() {
                   <td className="py-2.5 px-4 text-white">{n.ssid}</td>
                   <td className="py-2.5 px-4 text-gray-500">{n.bssid}</td>
                   <td className="py-2.5 px-4 text-cyan-600">{n.channel}</td>
-                  <td className="py-2.5 px-4 text-gray-400">{n.signal} dBm</td className="py-2.5>
-                  <td px-4">
+                  <td className="py-2.5 px-4 text-gray-400">{n.signal} dBm</td>
+                  <td className="py-2.5 px-4">
                     <span className={`text-xs px-2 py-0.5 rounded border ${
                       n.security === 'OPEN' ? 'bg-red-900/30 text-red-400 border-red-800' :
                       n.security === 'WEP' ? 'bg-orange-900/30 text-orange-400 border-orange-800' :

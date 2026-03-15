@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Package, Send, Terminal, Zap, CheckCircle, AlertCircle, Cpu, Activity } from 'lucide-react';
-import { mockExploits, mockPayloads, mockTargets } from '../data/mockData';
+import type { Exploit, Payload, Target as TargetType } from '../types';
 
 type SessionStatus = 'idle' | 'connecting' | 'exploiting' | 'success' | 'failed';
 
@@ -23,25 +23,160 @@ const postExploitCommands = [
 ];
 
 export default function PayloadDelivery() {
-  const [target] = useState(mockTargets[1]);
-  const [exploit] = useState(mockExploits[2]);
-  const [payload] = useState(mockPayloads[2]);
+  const [target, setTarget] = useState<TargetType | null>(null);
+  const [exploit, setExploit] = useState<Exploit | null>(null);
+  const [payload, setPayload] = useState<Payload | null>(null);
+  const [targets, setTargets] = useState<TargetType[]>([]);
+  const [exploits, setExploits] = useState<Exploit[]>([]);
+  const [payloads, setPayloads] = useState<Payload[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<SessionStatus>('idle');
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [termLog, setTermLog] = useState<string[]>([
-    '  ╔══════════════════════════════════════════╗',
-    '  ║     REDTEAM AI — DELIVERY CONSOLE v1.0   ║',
-    '  ╚══════════════════════════════════════════╝',
-    '',
-    '[*] exploit/multi/http/log4shell_header_injection loaded',
-    '[*] PAYLOAD: linux/x64/meterpreter/reverse_tcp',
-    '[*] Checking target: 192.168.1.25:8080...',
-    '[*] Awaiting operator command.',
-  ]);
+  const [termLog, setTermLog] = useState<string[]>([]);
   const [cmd, setCmd] = useState('');
   const [activeSession, setActiveSession] = useState<Session | null>(null);
   const [listeners, setListeners] = useState([{ port: 4444, payload: 'linux/x64/meterpreter/reverse_tcp', status: 'listening' }]);
   const termRef = useRef<HTMLDivElement>(null);
+
+  // Fetch data on mount
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  async function fetchData() {
+    setLoading(true);
+    setError(null);
+    try {
+      // Fetch targets (we'll use networks endpoint for now, or create a default)
+      const targetsResponse = await fetch('/api/networks');
+      if (targetsResponse.ok) {
+        const networksData = await targetsResponse.json();
+        // Convert network data to target format
+        const formattedTargets: TargetType[] = networksData.map((net: any) => ({
+          ip: net.bssid || net.ssid || 'unknown',
+          hostname: net.ssid || 'Unknown Device',
+          os: 'Unknown',
+          openPorts: [], // Would need port scan data
+          services: [],
+          vulnerabilities: []
+        }));
+        setTargets(formattedTargets);
+        // Set default target if we have data
+        if (formattedTargets.length > 0 && !target) {
+          setTarget(formattedTargets[0]);
+        }
+      } else {
+        // Fallback to default targets if network scan not available
+        setTargets([
+          {
+            ip: '192.168.1.25',
+            hostname: 'LINUX-WEB-01',
+            os: 'Ubuntu 20.04 LTS',
+            openPorts: [22, 80, 8080, 9200],
+            services: [
+              { port: 22, service: 'SSH', version: 'OpenSSH 8.2p1' },
+              { port: 80, service: 'HTTP', version: 'nginx 1.18' },
+              { port: 8080, service: 'HTTP', version: 'Apache Tomcat 9.0 (Log4j 2.14.1)' },
+              { port: 9200, service: 'Elasticsearch', version: '7.10.1' },
+            ],
+            vulnerabilities: []
+          }
+        ]);
+        setTarget(targets[0]);
+      }
+
+      // Fetch exploits
+      const exploitsResponse = await fetch('/api/exploits');
+      if (exploitsResponse.ok) {
+        const exploitsData = await exploitsResponse.json();
+        setExploits(exploitsData);
+        // Set default exploit if we have data
+        if (exploitsData.length > 0 && !exploit) {
+          setExploit(exploitsData[0]);
+        }
+      }
+
+      // Fetch payloads
+      const payloadsResponse = await fetch('/api/payloads');
+      if (payloadsResponse.ok) {
+        const payloadsData = await payloadsResponse.json();
+        setPayloads(payloadsData);
+        // Set default payload if we have data
+        if (payloadsData.length > 0 && !payload) {
+          setPayload(payloadsData[0]);
+        }
+      }
+    } catch (err) {
+      setError('Failed to load data: ' + (err instanceof Error ? err.message : String(err)));
+      // Set fallback data even on error
+      setTargets([
+        {
+          ip: '192.168.1.25',
+          hostname: 'LINUX-WEB-01',
+          os: 'Ubuntu 20.04 LTS',
+          openPorts: [22, 80, 8080, 9200],
+          services: [
+            { port: 22, service: 'SSH', version: 'OpenSSH 8.2p1' },
+            { port: 80, service: 'HTTP', version: 'nginx 1.18' },
+            { port: 8080, service: 'HTTP', version: 'Apache Tomcat 9.0 (Log4j 2.14.1)' },
+            { port: 9200, service: 'Elasticsearch', version: '7.10.1' },
+          ],
+          vulnerabilities: []
+        }
+      ]);
+      setTarget(targets[0]);
+      
+      // Set fallback exploits and payloads with proper typing
+      const fallbackExploits: Exploit[] = [
+        {
+          id: 'e1',
+          name: 'exploit/multi/http/log4shell_header_injection',
+          description: 'Apache Log4j 2 JNDI Injection via User-Agent Header',
+          rank: 'Excellent',
+          type: 'exploit',
+          platform: 'multiple',
+          arch: 'multiple',
+          cve: 'CVE-2021-44228',
+          reliability: 'Excellent',
+          payload_options: []
+        }
+      ];
+      setExploits(fallbackExploits);
+      setExploit(fallbackExploits[0]);
+      
+      const fallbackPayloads: Payload[] = [
+        {
+          id: 'p1',
+          name: 'linux/x64/meterpreter/reverse_tcp',
+          description: 'Linux Meterpreter, Reverse TCP Stager',
+          platform: 'linux',
+          arch: 'x64',
+          size: 87381,
+          type: 'meterpreter',
+          options: {}
+        }
+      ];
+      setPayloads(fallbackPayloads);
+      setPayload(fallbackPayloads[0]);
+    } finally {
+      setLoading(false);
+      
+      // Initialize term log with default messages if we don't have data yet
+      if (termLog.length === 0) {
+        setTermLog([
+          '  ╔══════════════════════════════════════════╗',
+          '  ║     REDTEAM AI — DELIVERY CONSOLE v1.0   ║',
+          '  ╚══════════════════════════════════════════╝',
+          '',
+          '[*] exploit/multi/http/log4shell_header_injection loaded',
+          '[*] PAYLOAD: linux/x64/meterpreter/reverse_tcp',
+          '[*] Checking target: 192.168.1.25:8080...',
+          '[*] Awaiting operator command.',
+        ]);
+      }
+    }
+  }
 
   useEffect(() => {
     if (termRef.current) {
@@ -54,6 +189,11 @@ export default function PayloadDelivery() {
   }
 
   function launchExploit() {
+    if (!target || !exploit || !payload) {
+      addLog(['[!] Please select target, exploit, and payload first']);
+      return;
+    }
+    
     setStatus('connecting');
     addLog([
       '',
@@ -98,9 +238,10 @@ export default function PayloadDelivery() {
     addLog([`meterpreter > ${c}`]);
     setCmd('');
     setTimeout(() => {
+      const targetHostname = target?.hostname || 'Unknown';
       const responses: Record<string, string[]> = {
         sysinfo: [
-          `Computer        : ${target.hostname}`,
+          `Computer        : ${targetHostname}`,
           `OS              : Ubuntu 20.04.6 LTS (Linux 5.4.0-169-generic)`,
           `Architecture    : x64`,
           `Meterpreter     : x64/linux`,
@@ -152,9 +293,9 @@ export default function PayloadDelivery() {
           <div className="bg-[#0d1117] border border-cyan-900/30 rounded-lg p-4">
             <div className="text-xs text-gray-600 font-mono tracking-wider uppercase mb-3">Target</div>
             <div className="space-y-1.5 text-xs font-mono">
-              <div className="flex justify-between"><span className="text-gray-600">IP</span><span className="text-cyan-400">{target.ip}</span></div>
-              <div className="flex justify-between"><span className="text-gray-600">Host</span><span className="text-white">{target.hostname}</span></div>
-              <div className="flex justify-between"><span className="text-gray-600">OS</span><span className="text-gray-400">{target.os}</span></div>
+              <div className="flex justify-between"><span className="text-gray-600">IP</span><span className="text-cyan-400">{target?.ip || 'N/A'}</span></div>
+              <div className="flex justify-between"><span className="text-gray-600">Host</span><span className="text-white">{target?.hostname || 'N/A'}</span></div>
+              <div className="flex justify-between"><span className="text-gray-600">OS</span><span className="text-gray-400">{target?.os || 'Unknown'}</span></div>
               <div className="flex justify-between"><span className="text-gray-600">Port</span><span className="text-orange-400">8080</span></div>
             </div>
           </div>
@@ -162,17 +303,17 @@ export default function PayloadDelivery() {
           {/* Exploit info */}
           <div className="bg-[#0d1117] border border-orange-900/30 rounded-lg p-4">
             <div className="text-xs text-gray-600 font-mono tracking-wider uppercase mb-3">Exploit</div>
-            <div className="text-xs font-mono text-cyan-400 break-all">{exploit.name}</div>
-            <div className="text-xs font-mono text-gray-600 mt-1">{exploit.cve}</div>
-            <div className="mt-2 text-xs text-green-400 font-mono">Rank: {exploit.rank}</div>
+            <div className="text-xs font-mono text-cyan-400 break-all">{exploit?.name || 'N/A'}</div>
+            <div className="text-xs font-mono text-gray-600 mt-1">{exploit?.cve || 'N/A'}</div>
+            <div className="mt-2 text-xs text-green-400 font-mono">Rank: {exploit?.rank || 'N/A'}</div>
           </div>
 
           {/* Payload info */}
           <div className="bg-[#0d1117] border border-purple-900/30 rounded-lg p-4">
             <div className="text-xs text-gray-600 font-mono tracking-wider uppercase mb-3">Payload</div>
-            <div className="text-xs font-mono text-green-400 break-all">{payload.name}</div>
-            <div className="text-xs font-mono text-gray-600 mt-1">{payload.platform}/{payload.arch}</div>
-            <div className="text-xs font-mono text-gray-600 mt-1">{payload.size} bytes</div>
+            <div className="text-xs font-mono text-green-400 break-all">{payload?.name || 'N/A'}</div>
+            <div className="text-xs font-mono text-gray-600 mt-1">{payload?.platform || 'N/A'}/{payload?.arch || ''}</div>
+            <div className="text-xs font-mono text-gray-600 mt-1">{payload?.size || 0} bytes</div>
           </div>
 
           {/* Listeners */}

@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import {
   LayoutDashboard, Wifi, ShieldAlert, Bug, Package, FileText,
-  Menu, X, Terminal, Radio, Zap
+  Menu, X, Terminal, Radio, Zap, Bot
 } from 'lucide-react';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, exact: true },
+  { to: '/chat', label: 'AI Chat', icon: Bot },
   { to: '/wardrive', label: 'War Drive', icon: Radio },
   { to: '/scanner', label: 'Vuln Scanner', icon: ShieldAlert },
   { to: '/exploits', label: 'Exploit Chooser', icon: Bug },
@@ -19,10 +20,10 @@ export default function Layout() {
   const [time, setTime] = useState(new Date());
 
   // Update clock
-  useState(() => {
+  useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(t);
-  });
+  }, []);
 
   return (
     <div className="flex h-screen bg-[#030712] cyber-grid overflow-hidden">

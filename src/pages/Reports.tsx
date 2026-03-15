@@ -1,21 +1,65 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FileText, Download, Share2, Printer, Calendar, ShieldAlert, Wifi, Target, AlertTriangle, ChevronRight, Check } from 'lucide-react';
-import { mockReport, mockNetworks, mockVulnerabilities, mockTargets } from '../data/mockData';
+import type { Report, Vulnerability, WifiNetwork, Target as TargetType } from '../types';
 
 const severityScore: Record<string, number> = { CRITICAL: 10, HIGH: 7, MEDIUM: 4, LOW: 2, INFO: 1 };
 
 export default function Reports() {
-  const [report] = useState(mockReport);
+  const [report, setReport] = useState<Report | null>(null);
+  const [networks, setNetworks] = useState<WifiNetwork[]>([]);
+  const [vulnerabilities, setVulnerabilities] = useState<Vulnerability[]>([]);
+  const [targets, setTargets] = useState<TargetType[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<'summary' | 'networks' | 'vulns' | 'exploits'>('summary');
   const [exportFormat, setExportFormat] = useState<'pdf' | 'html' | 'json'>('html');
 
-  const vulnBySev = mockVulnerabilities.reduce((acc, v) => {
+  // Fetch data on mount
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  async function fetchData() {
+    setLoading(true);
+    setError(null);
+    try {
+      // Fetch reports
+      const reportsResponse = await fetch('/api/reports');
+      if (reportsResponse.ok) {
+        const reportsData = await reportsResponse.json();
+        if (reportsData.length > 0) {
+          // Use the most recent report
+          setReport(reportsData[0]);
+        }
+      }
+
+      // Fetch vulnerabilities
+      const vulnResponse = await fetch('/api/vulnerabilities');
+      if (vulnResponse.ok) {
+        const vulnData = await vulnResponse.json();
+        setVulnerabilities(vulnData);
+      }
+
+      // Fetch networks
+      const networksResponse = await fetch('/api/networks');
+      if (networksResponse.ok) {
+        const networksData = await networksResponse.json();
+        setNetworks(networksData);
+      }
+    } catch (err) {
+      setError('Failed to load data: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const vulnBySev = vulnerabilities.reduce((acc, v) => {
     acc[v.severity] = (acc[v.severity] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
-  const avgCvss = (mockVulnerabilities.reduce((sum, v) => sum + v.cvss, 0) / mockVulnerabilities.length).toFixed(1);
-  const riskScore = (Object.entries(vulnBySev).reduce((sum, [sev, count]) => sum + severityScore[sev] * count, 0) / 10).toFixed(1);
+  const avgCvss = vulnerabilities.length > 0 ? (vulnerabilities.reduce((sum, v) => sum + v.cvss, 0) / vulnerabilities.length).toFixed(1) : '0.0';
+  const riskScore = vulnerabilities.length > 0 ? (Object.entries(vulnBySev).reduce((sum, [sev, count]) => sum + severityScore[sev] * count, 0) / 10).toFixed(1) : '0.0';
 
   return (
     <div className="space-y-5">
@@ -57,11 +101,11 @@ export default function Reports() {
       <div className="bg-[#0d1117] border border-cyan-900/30 rounded-lg p-4">
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-lg font-bold text-white font-mono">{report.title}</h2>
+            <h2 className="text-lg font-bold text-white font-mono">{report?.title || 'Assessment Report'}</h2>
             <div className="flex items-center gap-4 mt-2 text-xs font-mono text-gray-600">
-              <span className="flex items-center gap-1"><Calendar size={12} /> {new Date(report.timestamp).toLocaleDateString()}</span>
-              <span>Operator: <span className="text-cyan-500">{report.operator}</span></span>
-              <span>Scope: <span className="text-gray-400">{report.scope}</span></span>
+              <span className="flex items-center gap-1"><Calendar size={12} /> {report?.timestamp ? new Date(report.timestamp).toLocaleDateString() : 'N/A'}</span>
+              <span>Operator: <span className="text-cyan-500">{report?.operator || 'N/A'}</span></span>
+              <span>Scope: <span className="text-gray-400">{report?.scope || 'N/A'}</span></span>
             </div>
           </div>
           <div className="text-right">
@@ -76,11 +120,11 @@ export default function Reports() {
       {/* Summary stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {[
-          { label: 'Hosts', value: mockTargets.length, icon: Target, color: 'text-cyan-400 border-cyan-900/30' },
-          { label: 'Networks', value: mockNetworks.length, icon: Wifi, color: 'text-cyan-400 border-cyan-900/30' },
-          { label: 'Vulnerabilities', value: mockVulnerabilities.length, icon: ShieldAlert, color: 'text-red-400 border-red-900/30' },
+          { label: 'Hosts', value: targets.length, icon: Target, color: 'text-cyan-400 border-cyan-900/30' },
+          { label: 'Networks', value: networks.length, icon: Wifi, color: 'text-cyan-400 border-cyan-900/30' },
+          { label: 'Vulnerabilities', value: vulnerabilities.length, icon: ShieldAlert, color: 'text-red-400 border-red-900/30' },
           { label: 'Avg CVSS', value: avgCvss, icon: AlertTriangle, color: 'text-orange-400 border-orange-900/30' },
-          { label: 'Exploits Used', value: report.exploits_used.length, icon: AlertTriangle, color: 'text-purple-400 border-purple-900/30' },
+          { label: 'Exploits Used', value: report?.exploits_used?.length || 0, icon: AlertTriangle, color: 'text-purple-400 border-purple-900/30' },
         ].map(stat => (
           <div key={stat.label} className={`bg-[#0d1117] border rounded-lg p-3 text-center ${stat.color}`}>
             <div className="text-xl font-bold font-mono">{stat.value}</div>
@@ -114,7 +158,7 @@ export default function Reports() {
         <div className="bg-[#0d1117] border border-cyan-900/30 rounded-lg p-6 space-y-6">
           <div>
             <h3 className="text-sm font-bold text-cyan-400 font-mono tracking-wider mb-3">EXECUTIVE SUMMARY</h3>
-            <p className="text-sm text-gray-300 font-mono leading-relaxed">{report.executive_summary}</p>
+            <p className="text-sm text-gray-300 font-mono leading-relaxed">{report?.executive_summary || 'No summary available'}</p>
           </div>
 
           <div>
@@ -130,7 +174,7 @@ export default function Reports() {
                       className={`h-full ${
                         sev === 'CRITICAL' ? 'bg-red-500' : sev === 'HIGH' ? 'bg-orange-500' : sev === 'MEDIUM' ? 'bg-yellow-500' : 'bg-blue-500'
                       }`}
-                      style={{ width: `${(count / mockVulnerabilities.length) * 100}%` }}
+                      style={{ width: `${vulnerabilities.length > 0 ? (count / vulnerabilities.length) * 100 : 0}%` }}
                     />
                   </div>
                   <span className="text-xs text-gray-500 font-mono w-8 text-right">{count}</span>
@@ -163,7 +207,7 @@ export default function Reports() {
               </tr>
             </thead>
             <tbody>
-              {mockNetworks.map(n => (
+              {networks.map((n: any) => (
                 <tr key={n.id} className="border-b border-gray-800/30 hover:bg-cyan-900/10">
                   <td className="py-2.5 px-4 text-white">{n.ssid}</td>
                   <td className="py-2.5 px-4 text-gray-500">{n.bssid}</td>
@@ -203,7 +247,7 @@ export default function Reports() {
               </tr>
             </thead>
             <tbody>
-              {mockVulnerabilities.map(v => (
+              {vulnerabilities.map((v: any) => (
                 <tr key={v.id} className="border-b border-gray-800/30 hover:bg-cyan-900/10">
                   <td className="py-2.5 px-4 text-cyan-600">{v.cve}</td>
                   <td className="py-2.5 px-4">
@@ -235,7 +279,7 @@ export default function Reports() {
       {view === 'exploits' && (
         <div className="bg-[#0d1117] border border-cyan-900/30 rounded-lg p-4 space-y-4">
           <div className="text-sm font-bold text-cyan-400 font-mono tracking-wider">EXPLOITS USED IN ASSESSMENT</div>
-          {report.exploits_used.map((e, i) => (
+          {(report?.exploits_used || []).map((e: string, i: number) => (
             <div key={i} className="bg-black/30 border border-gray-800/50 rounded p-3">
               <div className="text-xs text-purple-400 font-mono">{e}</div>
               <div className="text-xs text-gray-600 mt-1">Successfully executed against target infrastructure</div>

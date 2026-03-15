@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { Radio, Wifi, WifiOff, Smartphone, MapPin, Battery, RefreshCw, Signal, Lock, Unlock, AlertTriangle } from 'lucide-react';
-import { mockNetworks, mockPhoneDevice } from '../data/mockData';
 import type { WifiNetwork, PhoneDevice } from '../types';
 
 const QR_LINK = 'https://redteam-mobile.local/pair?token=RT-ALPHA-001';
@@ -41,7 +40,16 @@ function SecurityBadge({ security }: { security: string }) {
 }
 
 export default function WarDrive() {
-  const [phone, setPhone] = useState<PhoneDevice>({ ...mockPhoneDevice });
+  const [phone, setPhone] = useState<PhoneDevice>({
+    id: 'phone-001',
+    name: 'RedTeam Phone Alpha',
+    connected: false,
+    batteryLevel: 78,
+    location: { lat: 37.7749, lng: -122.4194 },
+    wardrivingActive: false,
+    networksFound: 0,
+    lastSync: new Date().toISOString()
+  });
   const [scanning, setScanning] = useState(false);
   const [networks, setNetworks] = useState<WifiNetwork[]>([]);
   const [selected, setSelected] = useState<WifiNetwork | null>(null);
@@ -49,6 +57,8 @@ export default function WarDrive() {
   const [showQR, setShowQR] = useState(false);
   const [log, setLog] = useState<string[]>(['[SYS] War drive module initialized', '[SYS] Waiting for scan or mobile connection...']);
   const scanTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     return () => { if (scanTimer.current) clearInterval(scanTimer.current); };
@@ -59,33 +69,72 @@ export default function WarDrive() {
     setLog(prev => [`[${ts}] ${msg}`, ...prev].slice(0, 50));
   }
 
-  function startScan() {
+  async function startScan() {
     setScanning(true);
+    setLoading(true);
+    setError(null);
     setNetworks([]);
     addLog('[INFO] Initiating 802.11 passive scan on all channels...');
-    let i = 0;
-    scanTimer.current = setInterval(() => {
-      if (i < mockNetworks.length) {
-        const net = mockNetworks[i];
-        setNetworks(prev => [...prev, net]);
-        addLog(`[FOUND] SSID: ${net.ssid} | BSSID: ${net.bssid} | CH: ${net.channel} | ${net.signal} dBm | ${net.security}`);
-        if (net.security === 'OPEN') addLog(`[WARN] OPEN network detected: ${net.ssid}`);
-        if (net.security === 'WEP') addLog(`[WARN] Weak encryption (WEP): ${net.ssid}`);
-        i++;
-      } else {
-        clearInterval(scanTimer.current!);
-        setScanning(false);
-        addLog(`[DONE] Scan complete — ${mockNetworks.length} networks discovered`);
-        if (phone.connected) {
-          addLog('[SYNC] Results synchronized to mobile device');
-        }
+    
+    try {
+      // Call the backend API to get real WiFi networks
+      const response = await fetch('/api/networks');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch networks: ${response.status}`);
       }
-    }, 600);
+      
+      const networksData = await response.json();
+      // Convert backend format to frontend WifiNetwork format
+      const convertedNetworks: WifiNetwork[] = networksData.map((net: any, index: number) => ({
+        id: `${index + 1}`,
+        ssid: net.ssid || `Hidden_${index + 1}`,
+        bssid: net.bssid || `00:11:22:33:44:${index.toString().padStart(2, '0')}`,
+        channel: net.channel || 6,
+        signal: net.signal || -50,
+        security: net.encryption || 'Unknown',
+        encryption: net.encryption || 'Unknown',
+        vendor: 'Unknown',
+        firstSeen: new Date().toISOString(),
+        lastSeen: new Date().toISOString(),
+        lat: 37.7749 + (Math.random() - 0.5) * 0.01,
+        lng: -122.4194 + (Math.random() - 0.5) * 0.01,
+        clients: Math.floor(Math.random() * 50),
+        frequency: net.channel <= 14 ? '2.4GHz' : '5GHz'
+      }));
+      
+      setNetworks(convertedNetworks);
+      
+      // Simulate progressive discovery for UI effect
+      let i = 0;
+      scanTimer.current = setInterval(() => {
+        if (i < convertedNetworks.length) {
+          const net = convertedNetworks[i];
+          addLog(`[FOUND] SSID: ${net.ssid} | BSSID: ${net.bssid} | CH: ${net.channel} | ${net.signal} dBm | ${net.security}`);
+          if (net.security === 'OPEN') addLog(`[WARN] OPEN network detected: ${net.ssid}`);
+          if (net.security === 'WEP') addLog(`[WARN] Weak encryption (WEP): ${net.ssid}`);
+          i++;
+        } else {
+          clearInterval(scanTimer.current!);
+          setScanning(false);
+          setLoading(false);
+          addLog(`[DONE] Scan complete — ${convertedNetworks.length} networks discovered`);
+          if (phone.connected) {
+            addLog('[SYNC] Results synchronized to mobile device');
+          }
+        }
+      }, 600);
+    } catch (err) {
+      setScanning(false);
+      setLoading(false);
+      setError('Failed to scan networks: ' + (err instanceof Error ? err.message : String(err)));
+      addLog(`[ERROR] ${err}`);
+    }
   }
 
   function stopScan() {
     if (scanTimer.current) clearInterval(scanTimer.current);
     setScanning(false);
+    setLoading(false);
     addLog('[INFO] Scan manually stopped');
   }
 

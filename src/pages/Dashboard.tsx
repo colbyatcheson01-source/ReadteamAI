@@ -8,7 +8,6 @@ import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell
 } from 'recharts';
-import { mockVulnerabilities, mockNetworks, mockTargets } from '../data/mockData';
 
 const activityData = [
   { time: '00:00', scans: 2, exploits: 0, alerts: 1 },
@@ -59,14 +58,60 @@ function StatCard({ label, value, sub, icon: Icon, color, onClick }: {
 export default function Dashboard() {
   const navigate = useNavigate();
   const [tick, setTick] = useState(0);
+  const [networks, setNetworks] = useState([]);
+  const [vulnerabilities, setVulnerabilities] = useState([]);
+  const [targets, setTargets] = useState([]);
+  const [payloads, setPayloads] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const t = setInterval(() => setTick(x => x + 1), 2000);
+    
+    // Fetch real data from backend APIs
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        // Fetch networks
+        const networksResponse = await fetch('/api/networks');
+        if (networksResponse.ok) {
+          const networksData = await networksResponse.json();
+          setNetworks(networksData);
+        }
+        
+        // Fetch vulnerabilities
+        const vulnResponse = await fetch('/api/vulnerabilities');
+        if (vulnResponse.ok) {
+          const vulnData = await vulnResponse.json();
+          setVulnerabilities(vulnData);
+        }
+        
+        // Fetch payloads
+        const payloadsResponse = await fetch('/api/payloads');
+        if (payloadsResponse.ok) {
+          const payloadsData = await payloadsResponse.json();
+          setPayloads(payloadsData);
+        }
+        
+        // For targets, we'll extract from vulnerabilities or use a separate endpoint
+        // For now, we'll use a placeholder or derive from vulnerabilities
+        setTargets([]); // Would normally fetch from /api/targets or similar
+        
+        setLoading(false);
+      } catch (err) {
+        setError('Failed to load data');
+        setLoading(false);
+        console.error('Error fetching dashboard data:', err);
+      }
+    };
+    
+    fetchData();
+    
     return () => clearInterval(t);
   }, []);
 
-  const criticalCount = mockVulnerabilities.filter(v => v.severity === 'CRITICAL').length;
-  const exploitableCount = mockVulnerabilities.filter(v => v.exploitable).length;
+  const criticalCount = vulnerabilities.filter(v => v.severity === 'CRITICAL').length;
+  const exploitableCount = vulnerabilities.filter(v => v.exploitable).length;
 
   return (
     <div className="space-y-6">
@@ -83,33 +128,33 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Stats row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          label="Networks Detected" value={mockNetworks.length}
-          sub={`${mockNetworks.filter(n => n.security === 'OPEN').length} open networks`}
-          icon={Wifi} color="border-cyan-800/50 shadow-[0_0_10px_rgba(6,182,212,0.1)]"
-          onClick={() => navigate('/wardrive')}
-        />
-        <StatCard
-          label="Critical Vulns" value={criticalCount}
-          sub={`${exploitableCount} exploitable`}
-          icon={ShieldAlert} color="border-red-800/50 shadow-[0_0_10px_rgba(239,68,68,0.1)]"
-          onClick={() => navigate('/scanner')}
-        />
-        <StatCard
-          label="Targets Profiled" value={mockTargets.length}
-          sub="Awaiting exploitation"
-          icon={Server} color="border-orange-800/50 shadow-[0_0_10px_rgba(249,115,22,0.1)]"
-          onClick={() => navigate('/exploits')}
-        />
-        <StatCard
-          label="Payloads Staged" value={3}
-          sub="Ready to deliver"
-          icon={Package} color="border-purple-800/50 shadow-[0_0_10px_rgba(139,92,246,0.1)]"
-          onClick={() => navigate('/payload')}
-        />
-      </div>
+       {/* Stats row */}
+       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+         <StatCard
+           label="Networks Detected" value={networks.length}
+           sub={`${networks.filter(n => n.encryption === 'None' || n.encryption === 'WEP').length} open/weak networks`}
+           icon={Wifi} color="border-cyan-800/50 shadow-[0_0_10px_rgba(6,182,212,0.1)]"
+           onClick={() => navigate('/wardrive')}
+         />
+         <StatCard
+           label="Critical Vulns" value={criticalCount}
+           sub={`${exploitableCount} exploitable`}
+           icon={ShieldAlert} color="border-red-800/50 shadow-[0_0_10px_rgba(239,68,68,0.1)]"
+           onClick={() => navigate('/scanner')}
+         />
+         <StatCard
+           label="Targets Profiled" value={targets.length}
+           sub="Awaiting exploitation"
+           icon={Server} color="border-orange-800/50 shadow-[0_0_10px_rgba(249,115,22,0.1)]"
+           onClick={() => navigate('/exploits')}
+         />
+         <StatCard
+           label="Payloads Staged" value={payloads.length}
+           sub="Ready to deliver"
+           icon={Package} color="border-purple-800/50 shadow-[0_0_10px_rgba(139,92,246,0.1)]"
+           onClick={() => navigate('/payload')}
+         />
+       </div>
 
       {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

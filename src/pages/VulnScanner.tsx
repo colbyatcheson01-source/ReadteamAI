@@ -1,6 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ShieldAlert, Play, Server, ChevronDown, ChevronRight, ExternalLink, Brain } from 'lucide-react';
-import { mockScanResult, mockTargets } from '../data/mockData';
 import type { Vulnerability, Target } from '../types';
 
 type Severity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO';
@@ -107,18 +106,26 @@ export default function VulnScanner() {
   const [scanning, setScanning] = useState(false);
   const [scanCompleted, setScanCompleted] = useState(false);
   const [targetIP, setTargetIP] = useState('192.168.1.0/24');
-  const [selectedTarget, setSelectedTarget] = useState<Target | null>(mockTargets[0]);
+  const [selectedTarget, setSelectedTarget] = useState<Target | null>(null);
   const [expandedVulns, setExpandedVulns] = useState<Set<string>>(new Set());
   const [filterSev, setFilterSev] = useState<string>('ALL');
   const [progress, setProgress] = useState(0);
   const [scanLogs, setScanLogs] = useState<string[]>([]);
+  const [vulnerabilities, setVulnerabilities] = useState<Vulnerability[]>([]);
+  const [targets, setTargets] = useState<Target[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   function runScan() {
     setScanning(true);
     setScanCompleted(false);
     setProgress(0);
     setScanLogs(['[INIT] Starting Nmap-compatible scan...', '[INFO] Target: ' + targetIP]);
+    setLoading(true);
+    setError(null);
     
+    // In a real implementation, this would trigger a scan via the backend API
+    // For now, we'll simulate the UI progression but fetch real data
     const stages = [
       '[DISC] Host discovery — ICMP/ARP sweep',
       '[PORT] Port scanning — SYN stealth scan (-sS)',
@@ -140,10 +147,35 @@ export default function VulnScanner() {
         setScanning(false);
         setScanCompleted(true);
         setProgress(100);
-        setScanLogs(prev => [...prev, `[DONE] Scan complete — ${mockScanResult.vulnerabilities.length} findings across ${mockScanResult.hosts.length} hosts`]);
+        // Fetch real vulnerability data after "scan" completes
+        fetchVulnerabilityData();
       }
     }, 500);
   }
+
+   async function fetchVulnerabilityData() {
+     try {
+       // Fetch vulnerabilities from backend
+       const vulnResponse = await fetch('/api/vulnerabilities');
+       let vulnData = [];
+       if (vulnResponse.ok) {
+         vulnData = await vulnResponse.json();
+         setVulnerabilities(vulnData);
+       }
+       
+       // In a real implementation, we would also fetch targets from a dedicated endpoint
+       // For now, we'll set empty targets and let the UI handle it
+       setTargets([]);
+       
+       setScanLogs(prev => [...prev, `[DONE] Scan complete — ${vulnData.length} findings`]);
+       setLoading(false);
+     } catch (err) {
+       setScanning(false);
+       setLoading(false);
+       setError('Failed to load vulnerability data: ' + (err instanceof Error ? err.message : String(err)));
+       setScanLogs(prev => [...prev, `[ERROR] Failed to load vulnerability data`]);
+     }
+   }
 
   function toggleVuln(id: string) {
     setExpandedVulns(prev => {
@@ -153,8 +185,8 @@ export default function VulnScanner() {
     });
   }
 
-  const vulns = selectedTarget ? selectedTarget.vulnerabilities : mockScanResult.vulnerabilities;
-  const filteredVulns = filterSev === 'ALL' ? vulns : vulns.filter(v => v.severity === filterSev);
+  const vulns = selectedTarget ? (selectedTarget.vulnerabilities || []) : vulnerabilities;
+  const filteredVulns = filterSev === 'ALL' ? vulns : vulns.filter((v: Vulnerability) => v.severity === filterSev);
 
   return (
     <div className="space-y-5">
@@ -209,19 +241,19 @@ export default function VulnScanner() {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         {/* Target list */}
-        <div className="space-y-2">
-          <div className="text-xs font-mono text-gray-600 tracking-wider uppercase mb-3">Hosts ({mockTargets.length})</div>
-          {mockTargets.map(t => (
-            <TargetPanel key={t.ip} target={t} selected={selectedTarget?.ip === t.ip} onSelect={() => setSelectedTarget(t)} />
-          ))}
-          <button
-            onClick={() => setSelectedTarget(null)}
-            className={`w-full text-left p-3 rounded-lg border transition-all font-mono text-xs ${!selectedTarget ? 'bg-cyan-900/20 border-cyan-700' : 'bg-black/30 border-gray-800/50 hover:border-cyan-900'}`}
-          >
-            <div className="text-cyan-400 font-bold">ALL FINDINGS</div>
-            <div className="text-gray-600">{mockScanResult.vulnerabilities.length} total vulns</div>
-          </button>
-        </div>
+       <div className="space-y-2">
+         <div className="text-xs font-mono text-gray-600 tracking-wider uppercase mb-3">Hosts ({targets.length})</div>
+         {targets.map(t => (
+           <TargetPanel key={t.ip} target={t} selected={selectedTarget?.ip === t.ip} onSelect={() => setSelectedTarget(t)} />
+         ))}
+         <button
+           onClick={() => setSelectedTarget(null)}
+           className={`w-full text-left p-3 rounded-lg border transition-all font-mono text-xs ${!selectedTarget ? 'bg-cyan-900/20 border-cyan-700' : 'bg-black/30 border-gray-800/50 hover:border-cyan-900'}`}
+         >
+           <div className="text-cyan-400 font-bold">ALL FINDINGS</div>
+           <div className="text-gray-600">{vulnerabilities.length} total vulns</div>
+         </button>
+       </div>
 
         {/* Findings */}
         <div className="lg:col-span-3 space-y-4">

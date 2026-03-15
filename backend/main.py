@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 
 from backend.database import init_database
 from backend.routes import router
+from backend.routes.ai_chat import router as ai_chat_router
 
 
 @asynccontextmanager
@@ -39,6 +40,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(router, prefix="/api")
+app.include_router(ai_chat_router, prefix="/api")
 
 
 @app.get("/")

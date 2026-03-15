@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
+import Chat from './pages/Chat';
 import WarDrive from './pages/WarDrive';
 import VulnScanner from './pages/VulnScanner';
 import ExploitChooser from './pages/ExploitChooser';
@@ -13,6 +14,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Dashboard />} />
+          <Route path="chat" element={<Chat />} />
           <Route path="wardrive" element={<WarDrive />} />
           <Route path="scanner" element={<VulnScanner />} />
           <Route path="exploits" element={<ExploitChooser />} />

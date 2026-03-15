@@ -51,18 +51,24 @@ fi
 
 # Start the frontend dev server in the background
 echo "Starting frontend server..."
+cd "$SCRIPT_DIR"
 npm run dev &
 FRONTEND_PID=$!
 
-# Wait for frontend to start
-sleep 5
-
-# Check if frontend started successfully
-if ! kill -0 $FRONTEND_PID 2>/dev/null; then
-    echo "ERROR: Frontend server failed to start!"
-    kill $BACKEND_PID 2>/dev/null
-    exit 1
-fi
+# Wait for frontend to start - check for vite process instead of npm
+echo "Waiting for frontend to start..."
+for i in {1..10}; do
+    sleep 1
+    if pgrep -f "vite" > /dev/null 2>&1; then
+        echo "Frontend started successfully!"
+        break
+    fi
+    if [ $i -eq 10 ]; then
+        echo "ERROR: Frontend server failed to start within timeout!"
+        kill $BACKEND_PID 2>/dev/null
+        exit 1
+    fi
+done
 
 echo ""
 echo "=============================================="
